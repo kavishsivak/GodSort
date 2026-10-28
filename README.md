@@ -3,7 +3,7 @@
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Header-Only](https://img.shields.io/badge/Header--Only-Single%20Include-orange.svg)](#integration-guide)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#testing--verification)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
 
 **GodSort** is an ultra-high-performance, adaptive multi-engine meta-sorting library for modern C++ (C++17 and later).
 
@@ -479,4 +479,4 @@ The test runner validates:
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE.md).
