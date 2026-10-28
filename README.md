@@ -2,16 +2,17 @@
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Header-Only](https://img.shields.io/badge/Header--Only-Single%20Include-orange.svg)](#integration-guide)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#testing--verification)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **GodSort** is an ultra-high-performance, adaptive multi-engine meta-sorting library for modern C++ (C++17 and later).
 
 Standard library sorting algorithms (such as `std::sort` or `std::stable_sort`) apply a single, fixed strategy regardless of data characteristics. **GodSort dynamically evaluates data types, container structure, memory budgets, stability requirements, and runtime distribution patterns** to automatically dispatch the optimal sorting engine:
 
-- 🚀 **Linear-Time LSD Radix Sort** for scalar arithmetic and IEEE 754 floating-point keys ($O(N)$) .
-- 🧬 **Galloping TimSort** for complex objects, multi-criteria structs, and partially ordered/natural runs ($O(N \log N)$ worst-case, $O(N)$ best-case, strictly stable).
-- ⚡ **Adaptive 3-Way Introsort** with Tukey’s Ninther and Dutch National Flag partitioning for general comparisons and minimal memory ($O(N \log N)$ worst-case, in-place $O(1)$ auxiliary memory).
-- 🔍 **$O(N)$ Fast-Path Pre-Scan** that instantaneously detects already-sorted or reversed arrays and resolves them with zero unnecessary allocations or comparisons.
+- 🚀 **Linear-Time LSD Radix Sort** for scalar arithmetic and IEEE 754 floating-point keys (`O(N)`).
+- 🧬 **Galloping TimSort** for complex objects, multi-criteria structs, and partially ordered/natural runs (`O(N log N)` worst-case, `O(N)` best-case, strictly stable).
+- ⚡ **Adaptive 3-Way Introsort** with Tukey’s Ninther and Dutch National Flag partitioning for general comparisons and minimal memory (`O(N log N)` worst-case, in-place `O(1)` auxiliary memory).
+- 🔍 **O(N) Fast-Path Pre-Scan** that instantaneously detects already-sorted or reversed arrays and resolves them with zero unnecessary allocations or comparisons.
 
 ---
 
@@ -39,6 +40,7 @@ Standard library sorting algorithms (such as `std::sort` or `std::stable_sort`) 
    - [Type Traits Customization](#type-traits-customization)
 7. [API Reference](#api-reference)
 8. [Complexity Summary](#complexity-summary)
+9. [Testing & Verification](#testing--verification)
 
 ---
 
@@ -47,7 +49,7 @@ Standard library sorting algorithms (such as `std::sort` or `std::stable_sort`) 
 - **Header-Only & Dependency-Free**: Drop `godsort.hpp` directly into your project. Depends purely on standard C++17 headers.
 - **Universal Container Support**: Natively sorts `std::vector`, `std::deque`, `std::array`, raw C-style arrays (`T[]`), and any custom random-access range.
 - **Full IEEE 754 Floating-Point Support**: Linear Radix sorting handles negative zero (`-0.0`), positive zero (`+0.0`), subnormals, infinities, and negative numbers with bitwise sign-flipping.
-- **Duplicate-Heavy Resistance**: 3-Way Dutch National Flag partitioning collapses duplicate-heavy data down to linear $O(N)$ comparisons.
+- **Duplicate-Heavy Resistance**: 3-Way Dutch National Flag partitioning collapses duplicate-heavy data down to linear `O(N)` comparisons.
 - **Strict Stability Guarantees**: Preserves original relative order for equivalent keys when sorting complex records, table rows, or multi-pass databases.
 - **Zero-Overhead Abstractions**: Modern compile-time SFINAE type traits and compiler built-ins (`__builtin_clzll` / `_BitScanReverse64`) ensure minimal runtime overhead.
 
@@ -82,16 +84,16 @@ GodSort operates through a tiered decision pipeline:
 
 ### 1. Fast-Path Adaptive Pre-Scan
 
-Before invoking any heavy partitioning or allocating scratch memory, GodSort performs a single-pass cache-friendly scan ($O(N)$ time, $0$ allocations):
+Before invoking any heavy partitioning or allocating scratch memory, GodSort performs a single-pass cache-friendly scan (`O(N)` time, `0` allocations):
 - **Already Sorted Detection**: If elements are already in non-descending order, sorting terminates immediately.
-- **Strictly Reversed Detection**: If elements are in descending order, GodSort reverses them in-place via `std::reverse` in $O(N)$ time (for scalars or where stability is not strictly required).
+- **Strictly Reversed Detection**: If elements are in descending order, GodSort reverses them in-place via `std::reverse` in `O(N)` time (for scalars or where stability is not strictly required).
 - **Early Exit**: If the pre-scan determines that the range is neither sorted nor purely inverted within early checks, it breaks immediately to avoid wasting CPU cycles.
 
-### 2. Engine 1: LSD Radix Sort ($O(N)$ Linear Engine)
+### 2. Engine 1: LSD Radix Sort (O(N) Linear Engine)
 
 For scalar keys (integers, characters, IEEE 754 floats) using default ascending order, GodSort deploys a Least Significant Digit (LSD) Radix Sort:
 - **8-Bit Radix (256 Buckets)**: Processes keys byte-by-byte (4 passes for 32-bit types, 8 passes for 64-bit types).
-- **Pass Skipping**: If all elements in a pass fall into a single bucket ($count[b] == N$), the distribution pass is completely skipped.
+- **Pass Skipping**: If all elements in a pass fall into a single bucket (`count[b] == N`), the distribution pass is completely skipped.
 - **Signed Integer Transformation**: Converts signed two's-complement integers into unsigned order-preserving keys by flipping the sign bit (`key ^ (1 << (bits - 1))`).
 - **IEEE 754 Floating-Point Transformation**: Maps `float` and `double` into unsigned integers while preserving proper ordering across negative numbers, negative zero, and positives:
   ```cpp
@@ -104,22 +106,22 @@ For scalar keys (integers, characters, IEEE 754 floats) using default ascending 
 
 ### 3. Engine 2: Adaptive Introsort (Speed & In-Place Engine)
 
-When memory constraints demand $O(1)$ auxiliary storage or when custom comparators are applied to primitives, GodSort uses a modernized Introsort:
-- **Tukey’s Ninther Pivot Selection**: For arrays with $N \ge 64$, selects the pivot using the median of three medians-of-three. This drastically reduces susceptibility to worst-case quadratic behavior on pathological inputs.
-- **3-Way Dutch National Flag Partitioning**: Separates the input into three distinct regions: $[ < \text{pivot} \mid == \text{pivot} \mid > \text{pivot} ]$. Ranges with high duplicate frequencies (low entropy) are sorted in near-linear $O(N)$ time because elements equal to the pivot are never touched again.
-- **HeapSort Safeguard**: Tracks recursion depth ($2 \lfloor \log_2 N \rfloor$). If recursive depth limit is reached, it seamlessly falls back to in-place `heapsort`, guaranteeing an absolute $O(N \log N)$ worst-case upper bound.
+When memory constraints demand `O(1)` auxiliary storage or when custom comparators are applied to primitives, GodSort uses a modernized Introsort:
+- **Tukey’s Ninther Pivot Selection**: For arrays with `N >= 64`, selects the pivot using the median of three medians-of-three. This drastically reduces susceptibility to worst-case quadratic behavior on pathological inputs.
+- **3-Way Dutch National Flag Partitioning**: Separates the input into three distinct regions: `[ < pivot | == pivot | > pivot ]`. Ranges with high duplicate frequencies (low entropy) are sorted in near-linear `O(N)` time because elements equal to the pivot are never touched again.
+- **HeapSort Safeguard**: Tracks recursion depth (`2 * floor(log2(N))`). If the recursive depth limit is reached, it seamlessly falls back to in-place `heapsort`, guaranteeing an absolute `O(N log N)` worst-case upper bound.
 - **Insertion Sort Cutoff**: Partitions smaller than 20 elements switch to cache-optimized linear insertion sort.
 
 ### 4. Engine 3: Galloping TimSort (Stable Adaptive Engine)
 
 For non-scalar data types (classes, user-defined structs) or when stability is enforced:
 - **Natural Run Detection**: Scans the input to identify existing non-descending runs or strictly descending runs. Strictly descending runs are inverted in-place in linear time.
-- **Dynamic `minrun`**: Computes an optimal minimum run length ($32 \le \text{minrun} \le 64$) such that $N / \text{minrun}$ is equal to or slightly less than a power of 2, producing perfectly balanced merge trees.
-- **Binary Insertion Sort**: Short runs are extended to `minrun` using binary insertion sort ($O(\log N)$ comparisons).
+- **Dynamic `minrun`**: Computes an optimal minimum run length (`32 <= minrun <= 64`) such that `N / minrun` is equal to or slightly less than a power of 2, producing perfectly balanced merge trees.
+- **Binary Insertion Sort**: Short runs are extended to `minrun` using binary insertion sort (`O(log N)` comparisons).
 - **Stack Merge Invariants**: Maintains runs on an internal stack adhering to TimSort merge invariants:
-  1. $A > B + C$
-  2. $B > C$
-- **Galloping Mode**: During run merges, if one run consecutively wins elements $\ge \text{min\_gallop}$ (default 7) times, TimSort enters exponential galloping mode. It uses binary search to jump exponentially ($1, 3, 7, 15, \dots$) through the winning run, cutting comparisons from $O(k)$ to $O(\log k)$.
+  1. `run_len[i - 1] > run_len[i] + run_len[i + 1]`
+  2. `run_len[i] > run_len[i + 1]`
+- **Galloping Mode**: During run merges, if one run consecutively wins elements `>= min_gallop` (default 7) times, TimSort enters exponential galloping mode. It uses binary search to jump exponentially (`1, 3, 7, 15, ...`) through the winning run, cutting comparisons from `O(k)` to `O(log k)`.
 
 ---
 
@@ -127,16 +129,16 @@ For non-scalar data types (classes, user-defined structs) or when stability is e
 
 GodSort uses the following decision logic when `godsort::Options::engine` is set to `Engine::Auto` (default):
 
-| Data Type | Comparator | Stability Mode | Size ($N$) | Dispatched Engine | Auxiliary Memory | Time Complexity |
+| Data Type | Comparator | Stability Mode | Size (`N`) | Dispatched Engine | Auxiliary Memory | Time Complexity |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Scalar (int, float, etc.)** | `std::less` | `Auto` or `Unstable` | $N \ge 128$ | **LSD Radix Sort** | $O(N)$ | $O(N)$ |
-| **Scalar (int, float, etc.)** | `std::less` | `ForceStable` | $N \ge 64$ | **LSD Radix Sort** | $O(N)$ | $O(N)$ |
-| **Scalar (int, float, etc.)** | Custom / Lambda | Any | Any | **Adaptive Introsort** | $O(1)$ | $O(N \log N)$ |
-| **Scalar (small)** | `std::less` | Any | $N < 64$ | **Adaptive Introsort** | $O(1)$ | $O(N \log N)$ |
-| **Complex Struct / Class** | Any | `Auto` / `ForceStable`| Any | **Galloping TimSort** | $O(N)$ | $O(N \log N)$ |
-| **Complex Struct / Class** | Any | `PreferUnstableFast` | Any | **Adaptive Introsort** | $O(1)$ | $O(N \log N)$ |
-| **Any (Already Sorted)** | Any | Any | Any | **Pre-Scan Exit** | $0$ | $O(N)$ |
-| **Any (Strictly Reversed)** | Any | `Auto` / `Unstable` | Any | **In-Place Reverse** | $0$ | $O(N)$ |
+| **Scalar (int, float, etc.)** | `std::less` | `Auto` or `Unstable` | `N >= 128` | **LSD Radix Sort** | `O(N)` | `O(N)` |
+| **Scalar (int, float, etc.)** | `std::less` | `ForceStable` | `N >= 64` | **LSD Radix Sort** | `O(N)` | `O(N)` |
+| **Scalar (int, float, etc.)** | Custom / Lambda | Any | Any | **Adaptive Introsort** | `O(1)` | `O(N log N)` |
+| **Scalar (small)** | `std::less` | Any | `N < 64` | **Adaptive Introsort** | `O(1)` | `O(N log N)` |
+| **Complex Struct / Class** | Any | `Auto` / `ForceStable`| Any | **Galloping TimSort** | `O(N)` | `O(N log N)` |
+| **Complex Struct / Class** | Any | `PreferUnstableFast` | Any | **Adaptive Introsort** | `O(1)` | `O(N log N)` |
+| **Any (Already Sorted)** | Any | Any | Any | **Pre-Scan Exit** | `0` | `O(N)` |
+| **Any (Strictly Reversed)** | Any | `Auto` / `Unstable` | Any | **In-Place Reverse** | `0` | `O(N)` |
 
 ---
 
@@ -312,6 +314,7 @@ For multi-criteria sorting where elements with equal primary keys must preserve 
 #include "godsort.hpp"
 #include <vector>
 #include <string>
+#include <iostream>
 
 struct TableRow {
     int id;
@@ -320,7 +323,12 @@ struct TableRow {
 };
 
 int main() {
-    std::vector<TableRow> rows = get_database_rows();
+    std::vector<TableRow> rows = {
+        {101, "Engineering", 95000.0},
+        {102, "Design",      85000.0},
+        {103, "Engineering", 78000.0},
+        {104, "Marketing",   72000.0}
+    };
 
     // Method 1: Using godsort::stable_sort convenience function
     godsort::stable_sort(rows, [](const TableRow& a, const TableRow& b) {
@@ -333,6 +341,10 @@ int main() {
     godsort::sort(rows, [](const TableRow& a, const TableRow& b) {
         return a.department < b.department;
     }, opts);
+
+    for (const auto& r : rows) {
+        std::cout << r.id << " | " << r.department << " | $" << r.salary << "\n";
+    }
 
     return 0;
 }
@@ -396,9 +408,9 @@ namespace godsort {
 - `Engine::RadixSort`: High-throughput byte-level counting sort (linear time, stable).
 
 #### `enum class godsort::StabilityRequirement`
-- `StabilityRequirement::Auto`: Automatically deduced from type traits (scalar $\to$ fast unstable, struct $\to$ stable).
+- `StabilityRequirement::Auto`: Automatically deduced from type traits (scalar -> fast unstable, struct -> stable).
 - `StabilityRequirement::ForceStable`: Strictly preserve original relative order of equivalent items.
-- `StabilityRequirement::PreferUnstableFast`: Optimize purely for maximum speed and $O(1)$ memory.
+- `StabilityRequirement::PreferUnstableFast`: Optimize purely for maximum speed and `O(1)` memory.
 
 #### `struct godsort::Options`
 - `Engine engine = Engine::Auto`: Selected engine policy.
@@ -436,10 +448,10 @@ void godsort::fast_sort(Args&&... args);   // Forces StabilityRequirement::Prefe
 
 | Engine | Best Time | Average Time | Worst Time | Space Overhead | Stable | Best Used For |
 | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Pre-Scan (Early Exit)** | $O(N)$ | — | $O(N)$ | $O(1)$ | Yes | Already sorted or reverse-sorted inputs |
-| **LSD Radix Sort** | $O(N \cdot k)$ | $O(N \cdot k)$ | $O(N \cdot k)$ | $O(N)$ | Yes | Integers, chars, IEEE 754 floats ($k = \text{sizeof}(T)$) |
-| **Adaptive Introsort** | $O(N)$ | $O(N \log N)$ | $O(N \log N)$ | $O(1)$ | No | General types, custom lambdas, memory-constrained systems |
-| **Galloping TimSort** | $O(N)$ | $O(N \log N)$ | $O(N \log N)$ | $O(N)$ | Yes | Complex structs, database records, partially ordered data |
+| **Pre-Scan (Early Exit)** | `O(N)` | — | `O(N)` | `O(1)` | Yes | Already sorted or reverse-sorted inputs |
+| **LSD Radix Sort** | `O(N × k)` | `O(N × k)` | `O(N × k)` | `O(N)` | Yes | Integers, chars, IEEE 754 floats (`k = sizeof(T)`) |
+| **Adaptive Introsort** | `O(N)` | `O(N log N)` | `O(N log N)` | `O(1)` | No | General types, custom lambdas, memory-constrained systems |
+| **Galloping TimSort** | `O(N)` | `O(N log N)` | `O(N log N)` | `O(N)` | Yes | Complex structs, database records, partially ordered data |
 
 ---
 
