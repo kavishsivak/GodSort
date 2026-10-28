@@ -8,7 +8,7 @@
 
 Standard library sorting algorithms (such as `std::sort` or `std::stable_sort`) apply a single, fixed strategy regardless of data characteristics. **GodSort dynamically evaluates data types, container structure, memory budgets, stability requirements, and runtime distribution patterns** to automatically dispatch the optimal sorting engine:
 
-- 🚀 **Linear-Time LSD Radix Sort** for scalar arithmetic and IEEE 754 floating-point keys ($O(N)$).
+- 🚀 **Linear-Time LSD Radix Sort** for scalar arithmetic and IEEE 754 floating-point keys ($O(N)$) .
 - 🧬 **Galloping TimSort** for complex objects, multi-criteria structs, and partially ordered/natural runs ($O(N \log N)$ worst-case, $O(N)$ best-case, strictly stable).
 - ⚡ **Adaptive 3-Way Introsort** with Tukey’s Ninther and Dutch National Flag partitioning for general comparisons and minimal memory ($O(N \log N)$ worst-case, in-place $O(1)$ auxiliary memory).
 - 🔍 **$O(N)$ Fast-Path Pre-Scan** that instantaneously detects already-sorted or reversed arrays and resolves them with zero unnecessary allocations or comparisons.
