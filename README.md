@@ -175,7 +175,7 @@ GodSort is **header-only**. No compilation or linking of external libraries is r
    ```
 2. Copy `godsort.hpp` into your project's include directory:
    ```bash
-   cp GodSort/godsort.hpp /path/to/your/project/include/
+   cp "GodSort/header file/godsort.hpp" /path/to/your/project/include/
    ```
 3. Include the header in your C++ code:
    ```cpp
@@ -209,7 +209,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add GodSort directory to include path
-target_include_directories(my_target PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/path/to/GodSort)
+target_include_directories(my_target PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/GodSort/header file")
 ```
 
 ---
@@ -457,11 +457,11 @@ void godsort::fast_sort(Args&&... args);   // Forces StabilityRequirement::Prefe
 
 ## Testing & Verification
 
-A comprehensive test suite and benchmark suite is provided in `godsort.cpp`. To build and run all test cases:
+A comprehensive test suite and benchmark suite is provided in `test files/godsort.cpp`. To build and run all test cases:
 
 ```bash
 # Compile with C++17 and optimization
-g++ -O3 -std=c++17 godsort.cpp -o godsort_test
+g++ -O3 -std=c++17 "test files/godsort.cpp" -I"header file" -o godsort_test
 
 # Run the test suite
 ./godsort_test
